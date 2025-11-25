@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  build:
+    needs: release
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build for macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          pnpm pack:macos
+          echo "ASSET_NAME=llm-hub-macos" >> $GITHUB_ENV
+
+      - name: Build for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          pnpm pack:linux
+          echo "ASSET_NAME=llm-hub-linux" >> $GITHUB_ENV
+
+      - name: Build for Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          pnpm pack:windows
+          echo "ASSET_NAME=llm-hub-windows.exe" >> $GITHUB_ENV
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/${{ env.ASSET_NAME }}
+          asset_name: ${{ env.ASSET_NAME }}
+          asset_content_type: application/octet-stream

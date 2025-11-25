@@ -1,0 +1,357 @@
+# LLM Hub - AI模型访问代理 (TypeScript版本)
+
+这是一个使用TypeScript重构的AI模型访问代理，通过OpenAI兼容API接口，实现统一代理访问不同AI服务提供商/后端(如vLLM、Ollama)，服务于需要集成AI能力的各类应用系统。
+
+## 🔧 核心功能定位
+
+- **AI模型访问代理**：屏蔽后端服务差异，提供集中参数控制和客户端自定义的灵活管理
+- **统一API入口**：通过标准OpenAI接口提供对多种大语言模型的访问能力
+- **高效请求转发**：支持多种模型或多模型版本切换，满足不同场景需求
+- **AI模型请求和响应的完整回放**：
+  - 日志中完整记录了请求体和响应体
+  - 通过requestId关联请求和响应
+  - 支持问题排查和结果复现
+    - 模型效果评估 - 对比不同模型对相同请求的响应差异
+    - 参数调优 - 分析温度、提示词等参数对结果的影响
+    - 质量监控 - 持续跟踪模型输出质量变化
+    - 效果复现 - 重现特定场景下的模型表现
+
+## 📋 直接用户
+
+1. **AI应用开发者** - 通过OpenAI兼容API接口使用各种大语言模型
+2. **内部系统集成** - 通过统一代理访问不同后端AI服务
+
+## 🎯 服务场景
+
+1. 开发者通过标准OpenAI接口调用DeepSeek、Qwen等模型
+2. 系统通过代理统一管理对不同AI服务的访问
+3. 团队通过日志功能监控AI服务使用情况
+
+## ⚙️ 系统架构
+
+### 核心组件
+
+- **主服务文件**：[index.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/index.ts) - 实现了核心代理逻辑
+- **配置文件**：
+  - [model.config.json](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/config/model.config.json) - 模型配置文件
+  - [certs.config.json](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/config/certs.config.json) - 证书配置文件
+- **模块化设计**：
+  - [server.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/server.ts) - 服务器启动和路由处理
+  - [requestHandler.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/requestHandler.ts) - 请求处理逻辑
+  - [configLoader.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/configLoader.ts) - 配置加载器
+  - [logger.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/logger.ts) - 日志系统
+  - [types.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/types.ts) - TypeScript类型定义
+
+### 请求处理流程
+
+```mermaid
+graph TB
+    A[客户端请求] --> B{路由匹配}
+    B -->|/chat/completions| C[handleChatCompletions]
+    B -->|其他路径| D[返回404]
+    C --> E[解析请求体]
+    E --> F[记录请求日志]
+    F --> G[获取模型配置]
+    G --> H[构建目标URL]
+    H --> I[处理自定义请求头]
+    I --> J[转发请求到目标API]
+    J --> K{响应状态}
+    K -->|2xx成功| L[记录响应日志]
+    K -->|错误响应| M[处理错误并记录日志]
+    L --> N[返回响应给客户端]
+    M --> O[返回错误响应给客户端]
+```
+
+## 📁 配置文件说明
+
+### 模型配置(model.config.json)
+
+模型配置文件采用JSON格式，支持多个提供商(provider)的配置。每个提供商可以配置多个模型。
+
+#### 配置结构
+
+模型配置支持两种结构：
+
+1. **标准结构**：模型配置在 `models` 字段下
+2. **特殊结构**：模型直接在 provider 下（会自动过滤掉保留字段如 baseUrl, completionsPath, apiKey, customHeader）
+
+```json
+{
+  "provider名称": {
+    "baseUrl": "API基础URL",
+    "completionsPath": "聊天补全接口路径",
+    "apiKey": "API密钥(可选)",
+    "customHeader": {
+      "add": {
+        "header名称": "header值"
+      },
+      "replace": {
+        "客户端header名称": "上游header名称"
+      },
+      "remove": ["要删除的header名称"]
+    },
+    // 标准结构使用models字段
+    "models": {
+      "modelKey": {
+        "modelName": "实际模型名称",
+        "temperature": "默认温度参数"
+      }
+    }
+  }
+}
+```
+
+#### 模型标识符命名规则
+
+模型在系统中的唯一标识符采用 `${provider}/${modelKey}` 格式，其中：
+- `provider` 是配置文件中的提供商名称
+- `modelKey` 是模型在配置中的键名
+
+例如，在配置中定义的 `ollama/gpt-oss` 模型，在客户端请求时需要指定 `"model": "ollama/gpt-oss"`。
+
+#### 示例配置
+
+##### 标准结构示例
+
+```json
+{
+  "ollama": {
+    "baseUrl": "http://localhost:11434",
+    "completionsPath": "/v1/chat/completions",
+    "apiKey": "",
+    "customHeader": {
+      "add": {
+        "x-gateway-apikey": "{Authorization:bearer}"
+      },
+      "remove": ["Authorization"]
+    },
+    "models": {
+      "gpt-oss": {
+        "modelName": "gpt-oss:20b",
+        "temperature": 0.1
+      }
+    }
+  }
+}
+```
+
+##### 特殊结构示例
+
+```json
+{
+  "aliyun": {
+    "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode",
+    "completionsPath": "/v1/chat/completions",
+    "apiKey": "sk-811420f3a2844229b25cd141f1aeaa21",
+    "customHeader": {
+      "add": {
+        "Authorization": "Bearer {apiKey}"
+      }
+    },
+    // 特殊结构直接在provider下定义模型
+    "q3": {
+      "modelName": "qwen3-max",
+      "temperature": 0.1
+    },
+    "q3-vl-235b": {
+      "modelName": "qwen3-vl-235b-a22b-thinking",
+      "temperature": 0.1
+    }
+  }
+}
+```
+
+### 证书配置(certs.config.json)
+
+证书配置文件用于管理HTTPS连接的CA证书。配置为一个数组，每个元素代表一个主机的证书配置。
+
+#### 配置结构
+
+```json
+[
+  {
+    "hostname": "目标主机名",
+    "certPath": "证书文件路径(可选)", // 可选字段，如果不提供则不会加载证书
+    "must": true/false // 是否强制使用证书验证
+  }
+]
+```
+
+#### 证书验证行为
+
+- 当 `must` 设为 `true` 且证书文件可访问时，将强制使用证书验证
+- 当 `must` 设为 `true` 但证书文件不可访问时，会降级为跳过证书验证，并在日志中记录警告
+- 当 `must` 设为 `false` 时，无论证书文件是否存在都会跳过证书验证
+
+#### 示例配置
+
+```json
+[
+  {
+    "hostname": "api.deepseek.com",
+    "certPath": "/etc/letsencrypt/live/example.com",
+    "must": false
+  },
+  {
+    "hostname": "localhost",
+    "must": false
+  }
+]
+```
+
+## 🛡️ 安全机制
+
+### 自定义请求头处理
+
+支持对请求头进行添加、替换和删除操作：
+
+- **添加(add)**：向请求中添加新的header，支持占位符替换
+- **替换(replace)**：将客户端发送的header名称替换为上游API期望的名称
+- **删除(remove)**：从请求中移除指定的header
+
+#### 占位符替换机制
+
+在 `add` 操作中，可以使用 `{propertyName}` 格式的占位符从提供商配置中提取值。例如：
+
+```json
+{
+  "customHeader": {
+    "add": {
+      "Authorization": "Bearer {apiKey}"
+    }
+  },
+  "apiKey": "sk-xxx"
+}
+```
+
+在处理请求时，`{apiKey}` 会被替换为提供商配置中的 `apiKey` 值。
+
+### 证书管理
+
+- 支持为特定主机配置CA证书
+- 可配置是否强制使用证书验证([SSL]标记)
+- 证书验证失败时自动降级为跳过验证
+
+## 📊 日志系统设计
+
+### 日志存储
+
+- 日志文件存储在项目根目录下的`logs`文件夹中
+- 主日志文件名为`requests.log`
+- 支持日志轮转，单个日志文件最大为5MB
+
+### 日志内容
+
+日志记录分为两部分：
+1. **请求日志**：记录客户端发送的请求体及相关上下文信息
+2. **响应日志**：记录从上游服务接收到的响应体及状态信息
+
+每条日志都包含唯一的`requestId`，用于关联同一请求的请求日志和响应日志。
+
+### 日志格式
+
+```json
+{
+  "requestId": "唯一请求ID",
+  "timestamp": "时间戳",
+  "model": "模型名称",
+  "client": "客户端信息",
+  "path": "请求路径",
+  "method": "请求方法",
+  "body": { /* 请求体内容 */ }
+}
+```
+
+## ⚠️ 错误处理机制
+
+系统实现了多层次的错误处理：
+
+1. **请求解析错误**：处理无效JSON等请求体解析错误
+2. **模型配置错误**：处理未知模型或配置缺失错误
+3. **网络连接错误**：处理与上游服务连接超时或失败
+4. **上游服务错误**：处理上游服务返回的错误响应
+5. **系统内部错误**：处理代码执行过程中出现的未预期异常
+
+所有错误都会被记录到日志中，并返回适当的HTTP错误码给客户端。
+
+## 🚀 部署与运行
+
+### 技术特性
+
+- 使用 TypeScript 5.0+ 编写，类型安全
+- 模块化设计，易于维护和扩展
+- 使用 pnpm 作为包管理工具
+- 使用 Bun 构建跨平台独立二进制文件
+- 零依赖部署，可在任何支持的平台上直接运行
+
+### 环境变量
+
+- `HOST`：监听地址，默认为`localhost`
+- `PORT`：监听端口，默认为`7891`
+- `TIMEOUT`：请求超时时间(毫秒)，默认为`300000`(5分钟)
+
+### 启动服务
+
+```bash
+# 安装依赖
+pnpm install
+
+# 编译TypeScript代码
+pnpm build
+
+# 或者直接运行（开发模式）
+pnpm dev
+
+# 构建独立二进制文件（当前平台）
+pnpm pack
+
+# 跨平台构建
+pnpm pack:macos    # 构建macOS版本
+pnpm pack:linux    # 构建Linux版本
+pnpm pack:windows  # 构建Windows版本
+pnpm pack:all      # 构建所有平台版本
+```
+
+启动成功后，服务将在控制台打印可用的模型配置信息。
+
+## 💻 客户端使用说明
+
+### 请求格式
+
+客户端可以通过标准OpenAI API格式向代理发送请求：
+
+```json
+{
+  "model": "provider/modelKey", // 使用模型标识符
+  "messages": [
+    {
+      "role": "user",
+      "content": "你好世界！"
+    }
+  ],
+  "temperature": 0.7 // 可选，会覆盖模型配置中的默认温度
+}
+```
+
+### 支持的端点
+
+- `POST /chat/completions`
+- `POST /v1/chat/completions`
+
+### 客户端示例
+
+使用curl调用服务：
+
+```bash
+curl http://localhost:7891/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ollama/gpt-oss",
+    "messages": [
+      {
+        "role": "user",
+        "content": "你好世界！"
+      }
+    ]
+  }'
+```

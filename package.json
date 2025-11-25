@@ -1,0 +1,31 @@
+{
+  "name": "llm-hub-ts",
+  "version": "1.0.0",
+  "description": "AI Model Access Proxy - A TypeScript implementation of an OpenAI-compatible API proxy for various AI service providers",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "llm-hub": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "pack": "bun build src/index.ts --compile --outfile dist/llm-hub",
+    "pack:macos": "bun build src/index.ts --compile --target=bun --outfile dist/llm-hub-macos",
+    "pack:linux": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile dist/llm-hub-linux",
+    "pack:windows": "bun build src/index.ts --compile --target=bun-windows-x64 --outfile dist/llm-hub-windows.exe",
+    "pack:all": "./scripts/build-all.sh"
+  },
+  "keywords": ["ai", "proxy", "openai", "llm", "typescript"],
+  "author": "LLM Hub Team",
+  "license": "MIT",
+  "packageManager": "pnpm@10.12.1",
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

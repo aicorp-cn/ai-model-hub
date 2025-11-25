@@ -1,0 +1,131 @@
+{
+  "ollama": {
+    "baseUrl": "http://localhost:11434",
+    "completionsPath": "/v1/chat/completions",
+    "apiKey": "",
+    "customHeader": {
+      "add": {
+        "x-gateway-apikey": "{Authorization:bearer}"
+      },
+      "remove": ["Authorization"]
+    },
+    "models": {
+      "gpt-oss": {
+        "modelName": "gpt-oss:20b",
+        "temperature": 0.1
+      },
+      "deepseek-r1": {
+        "modelName": "deepseek-r1:70b",
+        "temperature": 0.1
+      },
+      "qwen3": {
+        "modelName": "qwen3:32b",
+        "temperature": 0.1
+      },
+      "qwen3-vl": {
+        "modelName": "qwen3-vl:32b",
+        "temperature": 0.1
+      },
+      "qwen3-coder": {
+        "modelName": "qwen3-coder:30b",
+        "temperature": 0.1
+      },
+      "qwen3-embedding": {
+        "modelName": "qwen3-embedding:8b",
+        "temperature": 0.1
+      },
+      "arctic-embed2": {
+        "modelName": "snowflake-arctic-embed2:568m",
+        "temperature": 0.1
+      }
+    }
+  },
+  "deepseek": {
+    "baseUrl": "https://api.deepseek.com",
+    "completionsPath": "/v1/chat/completions",
+    "apiKey": "sk-33bb9ba556b64ac5bd63f54e8497c5d0",
+    "customHeader": {
+      "add": {
+        "Authorization": "Bearer {apiKey}"
+      }
+    },
+    "models": {
+      "reasoner": {
+        "modelName": "deepseek-reasoner",
+        "temperature": 0.1
+      },
+      "chat": {
+        "modelName": "deepseek-chat",
+        "temperature": 0.1
+      }
+    }
+  },
+  "aliyun": {
+    "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode",
+    "completionsPath": "/v1/chat/completions",
+    "apiKey": "sk-811420f3a2844229b25cd141f1aeaa21",
+    "customHeader": {
+      "add": {
+        "Authorization": "Bearer {apiKey}"
+      }
+    },
+    "models": {
+      "q3": {
+        "modelName": "qwen3-max",
+        "temperature": 0.1
+      },
+      "q3-vl-235b": {
+        "modelName": "qwen3-vl-235b-a22b-thinking",
+        "temperature": 0.1
+      },
+      "q3-vl": {
+        "modelName": "qwen3-vl-plus",
+        "temperature": 0.1
+      },
+      "image": {
+        "modelName": "qwen-image-plus",
+        "temperature": 0.1
+      },
+      "image-edit": {
+        "modelName": "qwen-image-edit-plus",
+        "temperature": 0.1
+      }
+    }
+  },
+  "openrouter": {
+    "baseUrl": "https://openrouter.ai/api",
+    "completionsPath": "/v1/chat/completions",
+    "apiKey": "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",
+    "customHeader": {
+      "add": {
+        "Authorization": "Bearer {apiKey}"
+      }
+    },
+    "models": {
+      "gpt-5-nano": {
+        "modelName": "openai/gpt-5-nano",
+        "temperature": 0.1
+      },
+      "gpt-5": {
+        "modelName": "openai/gpt-5",
+        "temperature": 0.1
+      },
+      "gpt-4-1": {
+        "modelName": "openai/gpt-4.1",
+        "temperature": 0.1
+      },
+      "sonnet-4.5": {
+        "modelName": "anthropic/claude-sonnet-4.5",
+        "temperature": 0.1
+      },
+      "sonnet-3.7": {
+        "modelName": "anthropic/claude-3.7-sonnet",
+        "temperature": 0.1
+      },
+      "gemini-3-pro-preview": {
+        "modelName": "google/gemini-3-pro-preview",
+        "temperature": 0.1
+      }
+    }
+  }
+}
