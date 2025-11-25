@@ -18,8 +18,8 @@
     "pack:all": "./scripts/build-all.sh"
   },
   "keywords": ["ai", "proxy", "openai", "llm", "typescript"],
-  "author": "LLM Hub Team",
-  "license": "MIT",
+  "author": "AICorp",
+  "license": "Apache 2.0",
   "packageManager": "pnpm@10.12.1",
   "devDependencies": {
     "@types/node": "^24.10.1",
