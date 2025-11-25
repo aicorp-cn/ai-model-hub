@@ -44,7 +44,7 @@
 
 ### 请求处理流程
 
-```mermaid
+```
 graph TB
     A[客户端请求] --> B{路由匹配}
     B -->|/chat/completions| C[handleChatCompletions]
@@ -250,7 +250,7 @@ graph TB
 
 ### 日志格式
 
-```json
+```
 {
   "requestId": "唯一请求ID",
   "timestamp": "时间戳",
@@ -292,7 +292,7 @@ graph TB
 
 ### 启动服务
 
-```bash
+```
 # 安装依赖
 pnpm install
 
@@ -355,3 +355,40 @@ curl http://localhost:7891/v1/chat/completions \
     ]
   }'
 ```
+
+## 🔄 Git 工作流与版本管理
+
+### 分支策略
+
+- `main` - 主分支，稳定版本
+- `dev` - 开发分支，日常开发
+- `release/*` - 发布分支，用于版本发布准备
+- `feature/*` - 功能分支，用于开发新功能
+
+### 版本控制
+
+项目遵循语义化版本控制规范（Semantic Versioning）：
+- 主版本号(MAJOR)：当你做了不兼容的 API 修改
+- 次版本号(MINOR)：当你做了向下兼容的功能性新增
+- 修订号(PATCH)：当你做了向下兼容的问题修正
+
+版本标签格式：`v{主版本号}.{次版本号}.{修订号}`（例如：v1.2.3）
+
+### 自动化发布流程
+
+项目配置了 GitHub Actions 实现自动化发布：
+
+1. 当有新标签推送到仓库时，自动触发 Release 创建
+2. 自动构建跨平台二进制文件（macOS/Linux/Windows）
+3. 自动上传构建产物到 Release 页面
+
+### 发布新版本
+
+使用提供的发布脚本简化发布流程：
+
+```bash
+# 给当前提交打标签并发布
+./scripts/release.sh
+```
+
+脚本会引导你完成版本号确认和标签推送过程。
