@@ -44,7 +44,7 @@
 
 ### 请求处理流程
 
-```
+```mermaid
 graph TB
     A[客户端请求] --> B{路由匹配}
     B -->|/chat/completions| C[handleChatCompletions]
@@ -250,7 +250,7 @@ graph TB
 
 ### 日志格式
 
-```
+```json
 {
   "requestId": "唯一请求ID",
   "timestamp": "时间戳",
@@ -292,7 +292,7 @@ graph TB
 
 ### 启动服务
 
-```
+```bash
 # 安装依赖
 pnpm install
 
