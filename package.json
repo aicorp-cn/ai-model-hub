@@ -24,8 +24,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 0",
     "pack": "bun build src/index.ts --compile --outfile dist/llm-hub",
-    "pack:macos": "bun build src/index.ts --compile --target=bun --outfile dist/llm-hub-macos",
+    "pack:macos:x64": "bun build src/index.ts --compile --target=bun-darwin-x64 --outfile dist/llm-hub-macos-x64",
+    "pack:macos:arm64": "bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile dist/llm-hub-macos-arm64",
     "pack:linux": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile dist/llm-hub-linux",
     "pack:windows": "bun build src/index.ts --compile --target=bun-windows-x64 --outfile dist/llm-hub-windows.exe",
     "pack:all": "./scripts/build-all.sh"

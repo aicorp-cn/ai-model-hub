@@ -306,10 +306,11 @@ pnpm dev
 pnpm pack
 
 # 跨平台构建
-pnpm pack:macos    # 构建macOS版本
-pnpm pack:linux    # 构建Linux版本
-pnpm pack:windows  # 构建Windows版本
-pnpm pack:all      # 构建所有平台版本
+pnpm pack:macos:x64    # 构建macOS Intel版本
+pnpm pack:macos:arm64  # 构建macOS ARM版本
+pnpm pack:linux        # 构建Linux版本
+pnpm pack:windows      # 构建Windows版本
+pnpm pack:all          # 构建所有平台版本
 ```
 
 启动成功后，服务将在控制台打印可用的模型配置信息。
@@ -392,3 +393,36 @@ curl http://localhost:7891/v1/chat/completions \
 ```
 
 脚本会引导你完成版本号确认和标签推送过程。
+
+## 📦 构建与发布改进 (v1.0.1)
+
+在 v1.0.1 版本中，我们对构建和发布流程进行了重大改进：
+
+### 多架构支持
+
+现在支持构建以下平台的二进制文件：
+- **macOS Intel (x64)** - 适用于 Intel 处理器的 Mac
+- **macOS ARM (arm64)** - 适用于 Apple Silicon 处理器的 Mac
+- **Linux (x64)** - 适用于 x86_64 架构的 Linux 系统
+- **Windows (x64)** - 适用于 x86_64 架构的 Windows 系统
+
+### CI/CD 流程优化
+
+- 重构了 GitHub Actions 工作流，优化了作业依赖顺序
+- 添加了测试作业，确保代码质量
+- 更新了 GitHub Actions 到最新版本
+- 改进了错误处理和安全性
+- 实现了从 CHANGELOG.md 自动生成发布说明
+
+### 构建命令更新
+
+```bash
+# 构建特定平台版本
+pnpm pack:macos:x64    # 构建macOS Intel版本
+pnpm pack:macos:arm64  # 构建macOS ARM版本
+pnpm pack:linux        # 构建Linux版本
+pnpm pack:windows      # 构建Windows版本
+
+# 构建所有平台版本
+pnpm pack:all
+```

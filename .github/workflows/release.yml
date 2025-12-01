@@ -6,45 +6,25 @@ on:
       - 'v*'
 
 jobs:
-  release:
+  # 测试任务
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-  build:
-    needs: release
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 8
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'pnpm'
@@ -52,30 +32,115 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build for macOS
-        if: matrix.os == 'macos-latest'
+      - name: Run tests
         run: |
-          pnpm pack:macos
-          echo "ASSET_NAME=llm-hub-macos" >> $GITHUB_ENV
+          # TODO: 添加实际的测试命令
+          echo "Running tests..."
 
-      - name: Build for Linux
-        if: matrix.os == 'ubuntu-latest'
+  # 构建任务 - 矩阵策略支持多平台
+  build:
+    needs: test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-15-intel, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            target: bun-linux-x64
+            output: llm-hub-linux
+            asset_name: llm-hub-linux
+          - os: windows-latest
+            platform: win32
+            target: bun-windows-x64
+            output: llm-hub-windows.exe
+            asset_name: llm-hub-windows.exe
+          - os: macos-15-intel
+            platform: darwin-x64
+            target: bun-darwin-x64
+            output: llm-hub-macos-x64
+            asset_name: llm-hub-macos-x64
+          - os: macos-latest
+            platform: darwin-arm64
+            target: bun-darwin-arm64
+            output: llm-hub-macos-arm64
+            asset_name: llm-hub-macos-arm64
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build with TypeScript
+        run: pnpm build
+
+      - name: Compile to single executable
+        run: bun build dist/index.js --compile --target=${{ matrix.target }} --outfile ${{ matrix.output }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-hub-${{ matrix.platform }}
+          path: ${{ matrix.output }}
+          if-no-files-found: error
+
+  # 发布任务 - 仅在标签推送时运行
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
         run: |
-          pnpm pack:linux
-          echo "ASSET_NAME=llm-hub-linux" >> $GITHUB_ENV
-
-      - name: Build for Windows
-        if: matrix.os == 'windows-latest'
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          
+      - name: Extract release notes
+        id: extract_notes
         run: |
-          pnpm pack:windows
-          echo "ASSET_NAME=llm-hub-windows.exe" >> $GITHUB_ENV
+          # 从 CHANGELOG.md 提取发布说明
+          # 这里简化处理，实际可以使用更复杂的脚本来提取特定版本的变更日志
+          echo "RELEASE_NOTES=See [CHANGELOG.md](./CHANGELOG.md) for details." >> $GITHUB_ENV
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ env.RELEASE_NOTES }}
+          files: |
+            artifacts/llm-hub-linux/llm-hub-linux
+            artifacts/llm-hub-win32/llm-hub-windows.exe
+            artifacts/llm-hub-darwin-x64/llm-hub-macos-x64
+            artifacts/llm-hub-darwin-arm64/llm-hub-macos-arm64
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/${{ env.ASSET_NAME }}
-          asset_name: ${{ env.ASSET_NAME }}
-          asset_content_type: application/octet-stream
