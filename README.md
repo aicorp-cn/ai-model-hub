@@ -31,16 +31,16 @@
 
 ### 核心组件
 
-- **主服务文件**：[index.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/index.ts) - 实现了核心代理逻辑
+- **主服务文件**：[index.ts](./src/index.ts) - 实现了核心代理逻辑
 - **配置文件**：
-  - [model.config.json](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/config/model.config.json) - 模型配置文件
-  - [certs.config.json](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/config/certs.config.json) - 证书配置文件
+  - [model.config.json](./config/model.config.json) - 模型配置文件
+  - [certs.config.json](./config/certs.config.json) - 证书配置文件
 - **模块化设计**：
-  - [server.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/server.ts) - 服务器启动和路由处理
-  - [requestHandler.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/requestHandler.ts) - 请求处理逻辑
-  - [configLoader.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/configLoader.ts) - 配置加载器
-  - [logger.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/logger.ts) - 日志系统
-  - [types.ts](file:///Users/meizu/Documents/Workspaces/AIWorkspace/llm-hub/llm-hub-ts/src/types.ts) - TypeScript类型定义
+  - [server.ts](./src/server.ts) - 服务器启动和路由处理
+  - [requestHandler.ts](./src/requestHandler.ts) - 请求处理逻辑
+  - [configLoader.ts](./src/configLoader.ts) - 配置加载器
+  - [logger.ts](./src/logger.ts) - 日志系统
+  - [types.ts](./src/types.ts) - TypeScript类型定义
 
 ### 请求处理流程
 
@@ -142,7 +142,7 @@ graph TB
   "aliyun": {
     "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode",
     "completionsPath": "/v1/chat/completions",
-    "apiKey": "sk-811420f3a2844229b25cd141f1aeaa21",
+    "apiKey": "sk-811420*******229b25cd141f1aeaa21",
     "customHeader": {
       "add": {
         "Authorization": "Bearer {apiKey}"
