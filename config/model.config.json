@@ -43,7 +43,7 @@
   "deepseek": {
     "baseUrl": "https://api.deepseek.com",
     "completionsPath": "/v1/chat/completions",
-    "apiKey": "sk-33bb9ba556b64ac5bd63f54e8497c5d0",
+    "apiKey": "sk-33bb9ba********5bd63f54e8497c5d0",
     "customHeader": {
       "add": {
         "Authorization": "Bearer {apiKey}"
@@ -63,7 +63,7 @@
   "aliyun": {
     "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode",
     "completionsPath": "/v1/chat/completions",
-    "apiKey": "sk-811420f3a2844229b25cd141f1aeaa21",
+    "apiKey": "sk-811420*******229b25cd141f1aeaa21",
     "customHeader": {
       "add": {
         "Authorization": "Bearer {apiKey}"
@@ -95,7 +95,7 @@
   "openrouter": {
     "baseUrl": "https://openrouter.ai/api",
     "completionsPath": "/v1/chat/completions",
-    "apiKey": "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",
+    "apiKey": "sk-or-v1-97b082d3fd6d411ac*********9d0f2469e95697c6655569ac926f345456bf88",
     "customHeader": {
       "add": {
         "Authorization": "Bearer {apiKey}"
