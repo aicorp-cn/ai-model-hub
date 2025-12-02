@@ -5,8 +5,12 @@ import http from 'http';
 import https from 'https';
 import { StringDecoder } from 'string_decoder';
 import type { ProviderConfig } from './types';
-import { logRequestBody, logResponse, formatSize } from './logger';
+import { logRequestBody, logResponse, updateLogEntry, formatSize } from './logger';
 import { modelConfigs, providerConfigs, setupCA } from './configLoader';
+// 导入tokenizer相关函数
+import { countTokens, countTokensAsync, extractTextFromMessages, extractTextFromResponse } from './tokenizer';
+// 导入请求数据处理器
+import { processRequestData, getCachedRequestData } from './requestDataProcessor';
 
 // 服务器配置
 const HOST = process.env.HOST || 'localhost';
@@ -67,15 +71,23 @@ export function customHeaders(options: any, providerConfig: ProviderConfig): voi
   }
 }
 
-// 创建响应数据记录流
-export function createResponseLogger(requestId: string, headers: any, statusCode: number): Transform {
+// 创建合并的响应处理流，同时处理日志记录和token计算
+export function createMergedResponseStream(
+  requestId: string, 
+  headers: any, 
+  statusCode: number,
+  model: string,
+  onCompletionTokens: (tokens: number) => void
+): Transform {
+  let accumulatedResponse = '';
   let responseData = Buffer.alloc(0);
   const maxLogSize = 1024 * 1024; // 1MB限制
   let dataSize = 0;
   
   return new Transform({
     transform(chunk: any, encoding: any, callback: any) {
-      // 检查数据大小限制
+      // 同时处理日志数据收集和token计算数据收集
+      // 1. 收集日志数据
       if (dataSize < maxLogSize) {
         const remainingSpace = maxLogSize - dataSize;
         const chunkToStore = chunk.length <= remainingSpace ? chunk : chunk.slice(0, remainingSpace);
@@ -83,38 +95,60 @@ export function createResponseLogger(requestId: string, headers: any, statusCode
         dataSize += chunkToStore.length;
       }
       
+      // 2. 累积响应数据用于token计算
+      accumulatedResponse += chunk.toString();
+      
       // 将数据块传递给下一个流
       callback(null, chunk);
     },
     
     flush(callback: any) {
-      // 流结束时记录响应数据
-      setImmediate(() => {
+      // 流结束时同时处理日志记录和token计算
+      setImmediate(async () => {
         try {
-          // 确定内容类型
-          const contentType = headers ? headers['content-type'] || '' : '';
-          const isBinary = !contentType.includes('application/json') && !contentType.includes('text/');
-          
-          // 处理响应数据
-          let responseToLog: string;
-          if (isBinary) {
-            responseToLog = '<binary-data>';
-          } else {
+          // 并行处理日志记录和token计算
+          const logPromise = (async () => {
             try {
-              responseToLog = responseData.toString('utf8');
-              // 如果是JSON，尝试解析以确保格式正确
-              if (contentType.includes('application/json')) {
-                JSON.parse(responseToLog);
+              // 处理日志记录
+              const contentType = headers ? headers['content-type'] || '' : '';
+              const isBinary = !contentType.includes('application/json') && !contentType.includes('text/');
+              
+              let responseToLog: string;
+              if (isBinary) {
+                responseToLog = '<binary-data>';
+              } else {
+                try {
+                  responseToLog = responseData.toString('utf8');
+                  if (contentType.includes('application/json')) {
+                    JSON.parse(responseToLog);
+                  }
+                } catch {
+                  responseToLog = '<malformed-json-data>';
+                }
               }
-            } catch {
-              responseToLog = '<malformed-json-data>';
+              
+              // 记录响应日志
+              logResponse(responseToLog, headers, requestId, statusCode);
+            } catch (err) {
+              console.error('Failed to log response data:', err);
             }
-          }
+          })();
           
-          // 记录响应日志
-          logResponse(responseToLog, headers, requestId, statusCode);
+          const tokenPromise = (async () => {
+            try {
+              // 计算completion tokens
+              const completionTokens = await countTokensAsync(accumulatedResponse, model);
+              onCompletionTokens(completionTokens);
+            } catch (err) {
+              console.error('Failed to count completion tokens:', err);
+              onCompletionTokens(0);
+            }
+          })();
+          
+          // 等待两个操作都完成
+          await Promise.all([logPromise, tokenPromise]);
         } catch (err) {
-          console.error('Failed to log response data:', err);
+          console.error('Failed to process merged response stream:', err);
         }
       });
       
@@ -171,6 +205,91 @@ export function handleErrorResponse(clientResp: any, errorMessage = '', model = 
   }
 }
 
+// 创建响应数据记录流
+export function createResponseLogger(requestId: string, headers: any, statusCode: number): Transform {
+  let responseData = Buffer.alloc(0);
+  const maxLogSize = 1024 * 1024; // 1MB限制
+  let dataSize = 0;
+  
+  return new Transform({
+    transform(chunk: any, encoding: any, callback: any) {
+      // 检查数据大小限制
+      if (dataSize < maxLogSize) {
+        const remainingSpace = maxLogSize - dataSize;
+        const chunkToStore = chunk.length <= remainingSpace ? chunk : chunk.slice(0, remainingSpace);
+        responseData = Buffer.concat([responseData, chunkToStore]);
+        dataSize += chunkToStore.length;
+      }
+      
+      // 将数据块传递给下一个流
+      callback(null, chunk);
+    },
+    
+    flush(callback: any) {
+      // 流结束时记录响应数据
+      setImmediate(() => {
+        try {
+          // 确定内容类型
+          const contentType = headers ? headers['content-type'] || '' : '';
+          const isBinary = !contentType.includes('application/json') && !contentType.includes('text/');
+          
+          // 处理响应数据
+          let responseToLog: string;
+          if (isBinary) {
+            responseToLog = '<binary-data>';
+          } else {
+            try {
+              responseToLog = responseData.toString('utf8');
+              // 如果是JSON，尝试解析以确保格式正确
+              if (contentType.includes('application/json')) {
+                JSON.parse(responseToLog);
+              }
+            } catch {
+              responseToLog = '<malformed-json-data>';
+            }
+          }
+          
+          // 记录响应日志
+          logResponse(responseToLog, headers, requestId, statusCode);
+        } catch (err) {
+          console.error('Failed to log response data:', err);
+        }
+      });
+      
+      callback();
+    }
+  });
+}
+
+// 创建专门用于token统计的Transform流
+export function createTokenCountingStream(model: string, onCompletionTokens: (tokens: number) => void): Transform {
+  let accumulatedResponse = '';
+  
+  return new Transform({
+    transform(chunk: any, encoding: any, callback: any) {
+      // 累积响应数据用于token计算
+      accumulatedResponse += chunk.toString();
+      // 将数据块传递给下一个流
+      callback(null, chunk);
+    },
+    
+    flush(callback: any) {
+      // 流结束时计算completion tokens
+      setImmediate(async () => {
+        try {
+          const completionTokens = await countTokensAsync(accumulatedResponse, model);
+          onCompletionTokens(completionTokens);
+        } catch (err) {
+          console.error('Failed to count completion tokens:', err);
+          onCompletionTokens(0);
+        }
+      });
+      
+      callback();
+    }
+  });
+}
+
 // 处理chat.completions请求
 export async function handleChatCompletions(clientReq: any, clientResp: any): Promise<void> {
   let inModelName: string;
@@ -178,11 +297,22 @@ export async function handleChatCompletions(clientReq: any, clientResp: any): Pr
   let modelTemperature: number;
   let clientInfo = clientReq.headers['user-agent'];
   let parsedReqBody: any;
+  // 添加token统计变量
+  let promptTokens = 0;
+  let completionTokens = 0;
 
   try {
     parsedReqBody = await parseRequestBody(clientReq);
     
-    // 记录请求日志
+    // 初始化模型名称，用于后续token计算
+    inModelName = parsedReqBody.model;
+    if (!inModelName || !modelConfigs[inModelName]) {
+      throw new Error(`Unsupported or Unknown Model: ${inModelName}`);
+    }
+    const config = modelConfigs[inModelName];
+    actualModelName = config.modelName;
+    
+    // 记录请求日志（不等待token计算完成）
     const requestId = logRequestBody(parsedReqBody, {
       model: parsedReqBody.model,
       client: clientInfo?.startsWith('Zs/JS') ? 'CLine' : clientInfo,
@@ -190,14 +320,34 @@ export async function handleChatCompletions(clientReq: any, clientResp: any): Pr
       method: clientReq.method
     });
     clientReq.headers['x-request-id'] = requestId;
+    
+    // 处理请求数据，提取用于token计算和日志记录的信息
+    const processedRequestData = processRequestData(requestId, parsedReqBody, actualModelName);
+    
+    // 异步计算prompt tokens，不阻塞主流程
+    let promptTokensPromise: Promise<number> | null = null;
+    if (processedRequestData.promptText) {
+      promptTokensPromise = countTokensAsync(processedRequestData.promptText, processedRequestData.model);
+    }
+    
+    // 异步处理prompt tokens计算，不阻塞请求转发
+    if (promptTokensPromise) {
+      promptTokensPromise.then(promptTokensResult => {
+        promptTokens = promptTokensResult;
+        // 异步更新请求日志中的prompt tokens
+        updateLogEntry(requestId, { promptTokens }).catch(err => {
+          console.error('Failed to update prompt tokens in log:', err);
+        });
+      }).catch(err => {
+        console.error('Failed to calculate prompt tokens:', err);
+        // 即使token计算失败，也不影响主流程
+      });
+    }
 
-    inModelName = parsedReqBody.model;
     if (!inModelName || !modelConfigs[inModelName]) {
       throw new Error(`Unsupported or Unknown Model: ${inModelName}`);
     }
 
-    const config = modelConfigs[inModelName];
-    
     // 使用配置中的实际模型名称
     console.debug(`Actual Model Name: ${config.modelName}`);
     actualModelName = config.modelName;
@@ -308,9 +458,10 @@ export async function handleChatCompletions(clientReq: any, clientResp: any): Pr
           
           try {
             const responseData = JSON.parse(respondData);
-            logResponse(responseData, proxyResp.headers, proxyResp.headers['x-request-id'], upstreamRespStatusCode);
+            // 在错误响应中记录token统计
+            logResponse(responseData, proxyResp.headers, proxyResp.headers['x-request-id'], upstreamRespStatusCode, promptTokens, 0);
           } catch {
-            logResponse('<binary-data>', proxyResp.headers, proxyResp.headers['x-request-id'], upstreamRespStatusCode);
+            logResponse('<binary-data>', proxyResp.headers, proxyResp.headers['x-request-id'], upstreamRespStatusCode, promptTokens, 0);
           }
           
           // 处理上游错误
@@ -326,11 +477,25 @@ export async function handleChatCompletions(clientReq: any, clientResp: any): Pr
       }
 
       // 创建响应记录流并将其插入到管道中
-      const responseLogger = createResponseLogger(requestId, proxyResp.headers, upstreamRespStatusCode);
+      // 使用合并的响应处理流替代原来的两个独立流
+      const mergedResponseStream = createMergedResponseStream(
+        requestId, 
+        proxyResp.headers, 
+        upstreamRespStatusCode,
+        actualModelName,
+        (tokens: number) => {
+          completionTokens = tokens;
+          // 异步更新日志中的completion tokens
+          updateLogEntry(requestId, { completionTokens, totalTokens: promptTokens + completionTokens }).catch(err => {
+            console.error('Failed to update completion tokens in log:', err);
+          });
+          console.debug(`Prompt tokens: ${promptTokens}, Completion tokens: ${completionTokens}, Total tokens: ${promptTokens + completionTokens}`);
+        }
+      );
       
-      // 通过管道将上游服务的响应数据输出给客户端，同时记录数据
+      // 通过管道将上游服务的响应数据输出给客户端，同时记录数据和统计tokens
       clientResp.writeHead(upstreamRespStatusCode, proxyResp.headers);
-      outputStream.pipe(responseLogger).pipe(clientResp);
+      outputStream.pipe(mergedResponseStream).pipe(clientResp);
       
       console.info(`
 ---

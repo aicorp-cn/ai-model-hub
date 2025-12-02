@@ -1,46 +1,65 @@
-# LLM Hub - AI模型访问代理 (TypeScript版本)
+# LLM Hub - AI模型访问代理
 
-这是一个使用TypeScript重构的AI模型访问代理，通过OpenAI兼容API接口，实现统一代理访问不同AI服务提供商/后端(如vLLM、Ollama)，服务于需要集成AI能力的各类应用系统。
+LLM Hub是一个使用TypeScript编写的高性能AI模型访问代理，通过OpenAI兼容API接口，实现对多种AI服务提供商（如vLLM、Ollama、DeepSeek、Aliyun、OpenRouter等）的统一代理访问。该项目专为需要集成AI能力的应用系统设计，提供集中参数控制和客户端自定义的灵活管理。
 
-## 🔧 核心功能定位
+## 🔧 核心功能
 
-- **AI模型访问代理**：屏蔽后端服务差异，提供集中参数控制和客户端自定义的灵活管理
-- **统一API入口**：通过标准OpenAI接口提供对多种大语言模型的访问能力
-- **高效请求转发**：支持多种模型或多模型版本切换，满足不同场景需求
-- **AI模型请求和响应的完整回放**：
-  - 日志中完整记录了请求体和响应体
-  - 通过requestId关联请求和响应
-  - 支持问题排查和结果复现
-    - 模型效果评估 - 对比不同模型对相同请求的响应差异
-    - 参数调优 - 分析温度、提示词等参数对结果的影响
-    - 质量监控 - 持续跟踪模型输出质量变化
-    - 效果复现 - 重现特定场景下的模型表现
+### AI模型访问代理
+- 屏蔽后端服务差异，提供集中参数控制和客户端自定义的灵活管理
+- 支持多种AI服务提供商（Ollama, DeepSeek, Aliyun, OpenRouter等）
+- 通过标准OpenAI接口提供对多种大语言模型的访问能力
 
-## 📋 直接用户
+### 高效请求处理
+- 支持多种模型或多模型版本切换，满足不同场景需求
+- 完整的请求和响应日志记录，通过requestId关联请求和响应
+- Token统计功能，精确计算prompt tokens和completion tokens
 
-1. **AI应用开发者** - 通过OpenAI兼容API接口使用各种大语言模型
-2. **内部系统集成** - 通过统一代理访问不同后端AI服务
+### 安全与配置
+- HTTPS证书验证配置，支持为特定主机配置CA证书
+- 自定义请求头处理，支持添加、替换和删除请求头
+- 灵活的模型配置，支持多种配置结构
 
-## 🎯 服务场景
+### 日志与监控
+- 完整的请求/响应日志记录，支持日志轮转
+- 模型效果评估 - 对比不同模型对相同请求的响应差异
+- 参数调优 - 分析温度、提示词等参数对结果的影响
+- 质量监控 - 持续跟踪模型输出质量变化
+- 效果复现 - 重现特定场景下的模型表现
 
-1. 开发者通过标准OpenAI接口调用DeepSeek、Qwen等模型
-2. 系统通过代理统一管理对不同AI服务的访问
-3. 团队通过日志功能监控AI服务使用情况
+## 📋 适用用户
+
+### AI应用开发者
+通过OpenAI兼容API接口使用各种大语言模型，无需关心底层实现细节。
+
+### 内部系统集成工程师
+通过统一代理访问不同后端AI服务，简化系统集成复杂度。
+
+## 🎯 应用场景
+
+### 多模型统一访问
+开发者可通过标准OpenAI接口调用DeepSeek、Qwen、Ollama等不同提供商的模型。
+
+### 企业AI服务管理
+系统通过代理统一管理对不同AI服务的访问，降低维护成本。
+
+### AI服务监控与分析
+团队通过完整的日志功能监控AI服务使用情况，进行效果评估和参数调优。
 
 ## ⚙️ 系统架构
 
 ### 核心组件
 
-- **主服务文件**：[index.ts](./src/index.ts) - 实现了核心代理逻辑
+- **主服务文件**：[index.ts](./src/index.ts) - 应用入口点，启动代理服务器
 - **配置文件**：
-  - [model.config.json](./config/model.config.json) - 模型配置文件
-  - [certs.config.json](./config/certs.config.json) - 证书配置文件
-- **模块化设计**：
-  - [server.ts](./src/server.ts) - 服务器启动和路由处理
-  - [requestHandler.ts](./src/requestHandler.ts) - 请求处理逻辑
-  - [configLoader.ts](./src/configLoader.ts) - 配置加载器
-  - [logger.ts](./src/logger.ts) - 日志系统
-  - [types.ts](./src/types.ts) - TypeScript类型定义
+  - [model.config.json](./config/model.config.json) - 模型配置文件，定义不同AI服务提供商的模型配置
+  - [certs.config.json](./config/certs.config.json) - 证书配置文件，管理HTTPS连接的CA证书
+- **核心模块**：
+  - [server.ts](./src/server.ts) - 服务器启动和路由处理，管理HTTP服务器生命周期
+  - [requestHandler.ts](./src/requestHandler.ts) - 请求处理逻辑，处理客户端请求并转发到目标API
+  - [configLoader.ts](./src/configLoader.ts) - 配置加载器，加载和管理模型及证书配置
+  - [logger.ts](./src/logger.ts) - 日志系统，记录请求和响应日志，支持日志轮转
+  - [tokenizer.ts](./src/tokenizer.ts) - Token统计模块，计算prompt和completion tokens
+  - [types.ts](./src/types.ts) - TypeScript类型定义，定义项目中使用的数据结构
 
 ### 请求处理流程
 
@@ -62,7 +81,7 @@ graph TB
     M --> O[返回错误响应给客户端]
 ```
 
-## 📁 配置文件说明
+## 📁 配置说明
 
 ### 模型配置(model.config.json)
 
@@ -108,6 +127,31 @@ graph TB
 - `modelKey` 是模型在配置中的键名
 
 例如，在配置中定义的 `ollama/gpt-oss` 模型，在客户端请求时需要指定 `"model": "ollama/gpt-oss"`。
+
+#### 自定义请求头处理
+
+支持对请求头进行添加、替换和删除操作：
+
+- **添加(add)**：向请求中添加新的header，支持占位符替换
+- **替换(replace)**：将客户端发送的header名称替换为上游API期望的名称
+- **删除(remove)**：从请求中移除指定的header
+
+##### 占位符替换机制
+
+在 `add` 操作中，可以使用 `{propertyName}` 格式的占位符从提供商配置中提取值。例如：
+
+```json
+{
+  "customHeader": {
+    "add": {
+      "Authorization": "Bearer {apiKey}"
+    }
+  },
+  "apiKey": "sk-xxx"
+}
+```
+
+在处理请求时，`{apiKey}` 会被替换为提供商配置中的 `apiKey` 值。
 
 #### 示例配置
 
@@ -201,7 +245,7 @@ graph TB
 
 ## 🛡️ 安全机制
 
-### 自定义请求头处理
+### 请求头处理
 
 支持对请求头进行添加、替换和删除操作：
 
@@ -232,7 +276,7 @@ graph TB
 - 可配置是否强制使用证书验证([SSL]标记)
 - 证书验证失败时自动降级为跳过验证
 
-## 📊 日志系统设计
+## 📊 日志系统
 
 ### 日志存储
 
@@ -248,6 +292,12 @@ graph TB
 
 每条日志都包含唯一的`requestId`，用于关联同一请求的请求日志和响应日志。
 
+### Token统计
+
+- 自动计算并记录prompt tokens和completion tokens
+- 支持多种模型的token统计
+- 提供总token数统计
+
 ### 日志格式
 
 ```json
@@ -258,11 +308,14 @@ graph TB
   "client": "客户端信息",
   "path": "请求路径",
   "method": "请求方法",
-  "body": { /* 请求体内容 */ }
+  "body": { /* 请求体内容 */ },
+  "promptTokens": 100,
+  "completionTokens": 200,
+  "totalTokens": 300
 }
 ```
 
-## ⚠️ 错误处理机制
+## ⚠️ 错误处理
 
 系统实现了多层次的错误处理：
 
@@ -278,7 +331,7 @@ graph TB
 
 ### 技术特性
 
-- 使用 TypeScript 5.0+ 编写，类型安全
+- 使用 TypeScript 5.9+ 编写，类型安全
 - 模块化设计，易于维护和扩展
 - 使用 pnpm 作为包管理工具
 - 使用 Bun 构建跨平台独立二进制文件
@@ -315,7 +368,7 @@ pnpm pack:all          # 构建所有平台版本
 
 启动成功后，服务将在控制台打印可用的模型配置信息。
 
-## 💻 客户端使用说明
+## 💻 客户端使用
 
 ### 请求格式
 
@@ -357,14 +410,27 @@ curl http://localhost:7891/v1/chat/completions \
   }'
 ```
 
-## 🔄 Git 工作流与版本管理
+### 与OpenAI SDK集成
 
-### 分支策略
+由于LLM Hub完全兼容OpenAI API，您可以直接使用OpenAI的官方SDK：
 
-- `main` - 主分支，稳定版本
-- `dev` - 开发分支，日常开发
-- `release/*` - 发布分支，用于版本发布准备
-- `feature/*` - 功能分支，用于开发新功能
+```javascript
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: 'your-api-key', // 如果需要的话
+  baseURL: 'http://localhost:7891/v1' // 指向LLM Hub代理
+});
+
+const chatCompletion = await openai.chat.completions.create({
+  model: 'ollama/gpt-oss',
+  messages: [{ role: 'user', content: '你好世界！' }],
+});
+
+console.log(chatCompletion.choices[0].message.content);
+```
+
+## 🔄 版本管理
 
 ### 版本控制
 
@@ -394,7 +460,7 @@ curl http://localhost:7891/v1/chat/completions \
 
 脚本会引导你完成版本号确认和标签推送过程。
 
-## 📦 构建与发布改进 (v1.0.1)
+## 📦 最新版本特性 (v1.0.1)
 
 在 v1.0.1 版本中，我们对构建和发布流程进行了重大改进：
 
@@ -414,7 +480,7 @@ curl http://localhost:7891/v1/chat/completions \
 - 改进了错误处理和安全性
 - 实现了从 CHANGELOG.md 自动生成发布说明
 
-### 构建命令更新
+### 构建命令
 
 ```bash
 # 构建特定平台版本

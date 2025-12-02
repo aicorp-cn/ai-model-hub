@@ -47,4 +47,8 @@ export interface LogEntry {
   headers?: Record<string, string>;
   response?: string;
   isBinary?: boolean;
+  // 添加token统计字段
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
 }
