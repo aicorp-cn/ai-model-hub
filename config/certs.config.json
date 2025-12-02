@@ -1,8 +1,0 @@
-[{
-    "hostname": "api.deepseek.com",
-    "certPath": "/etc/letsencrypt/live/example.com",
-    "must":false
-},{
-    "hostname": "localhost",
-    "must":false
-}]
