@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "Node16",
+    "module": "commonjs",
     "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./src",
@@ -20,7 +20,7 @@
     "noImplicitThis": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node16",
+    "moduleResolution": "node",
     "types": ["node"]
   },
   "include": ["src/**/*"],
